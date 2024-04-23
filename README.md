@@ -62,8 +62,9 @@ And create a `.envrc` file with the following content:
 
 ```sh
 use flake
-
 ```
+
+After running `direnv allow` this will ensure that the `bookstack-editor` CLI utility is installed and in your `$PATH` when you `cd` into the wiki directory (or a subdirectory).
 
 ### 4. Usage
 
@@ -87,7 +88,7 @@ In your `init.el` or wherever you configure your Emacs:
 ```elisp
 (use-package bookstack-editor
     :load-path (lambda () "path/to/bookstack-editor")
-    :commands (bookstack-mode))
+    :commands (bookstack-mode bookstack-sync))
 ```
 
 In directories that include wiki file, place `.dir-locals.el` file with the following content:
@@ -99,3 +100,5 @@ In directories that include wiki file, place `.dir-locals.el` file with the foll
 ```
 
 You can then sync either by running `C-c C-s` or by saving a markdown file. If you prefer not to sync on save, leave the add-hook line out.
+
+When using the nix / direnv setup above, consider also using the [emacs-direnv](https://github.com/wbolster/emacs-direnv) package to automatically have `bookstack-editor` in your `$PATH` in Emacs as well. `M-x bookstack-sync` will just call this CLI utility.
