@@ -1,0 +1,19 @@
+[project]
+name = "bookstack-editor"
+requires-python = ">=3.10"
+version = "0.1.0"
+description = ""
+authors = [{name = "Robert Krahn", email = "robert@kra.hn"}]
+dependencies = [
+  "pydantic",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["bookstack_editor"]
+
+[tool.pyright]
+exclude = []
