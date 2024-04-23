@@ -2,12 +2,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    # pyproject-dependencies.url = "github:rksm/pyproject-dependencies";
-    pyproject-dependencies.url = "path:/home/robert/projects/python/pyproject-dependencies";
   };
 
   outputs =
-    { self, nixpkgs, flake-utils, pyproject-dependencies }:
+    { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = import nixpkgs { inherit system; };
@@ -32,7 +30,7 @@
           rev = "b88a01a";
           sha256 = "sha256-OJDZ283byQdCyxKPPg68IhkDIn/XrQN+pmab6PqiVQ0=";
         };
-        meta = with pkgs.lib; {
+        meta = {
           description = "bookstack lib";
         };
         doCheck = false;
