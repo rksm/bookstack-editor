@@ -64,6 +64,8 @@ And create a `.envrc` file with the following content:
 use flake
 ```
 
+Add those files to git.
+
 After running `direnv allow` this will ensure that the `bookstack-editor` CLI utility is installed and in your `$PATH` when you `cd` into the wiki directory (or a subdirectory).
 
 ### 4. Usage
