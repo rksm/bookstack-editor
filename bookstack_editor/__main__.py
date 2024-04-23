@@ -191,7 +191,7 @@ class BookstackRoot(pydantic.BaseModel):
             new_downloaded_pages.pages[key] = page
             tqdm.write(f"updated {page.key()}")
 
-        (root_dir / "bookstack.json").write_text(new_downloaded_pages.model_dump_json(indent=2))
+        (root_dir / BOOKSTACK_FILE_NAME).write_text(new_downloaded_pages.model_dump_json(indent=2))
         print(f"synced {len(pages.data)} pages")
 
         self.pages = new_downloaded_pages.pages
