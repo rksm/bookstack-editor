@@ -7,4 +7,4 @@ build:
   python -m build
 
 run:
-  python -m ./"bookstack_editor".main
+  python -m ./bookstack_editor.main

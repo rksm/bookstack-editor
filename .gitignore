@@ -6,3 +6,6 @@ __pycache__
 .idea
 /dist/
 *.egg-info
+/result
+/.venv/
+/.direnv/
