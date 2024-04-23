@@ -214,6 +214,8 @@ def main():
         wiki_dir = wiki_dir.parent
         bookstack_file = wiki_dir / BOOKSTACK_FILE_NAME
 
+    os.chdir(wiki_dir)
+
     if (wiki_dir / ".env").exists():
         dotenv.load_dotenv(wiki_dir / ".env")
 
