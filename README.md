@@ -93,7 +93,7 @@ In your `init.el` or wherever you configure your Emacs:
     :commands (bookstack-mode bookstack-sync))
 ```
 
-In directories that include wiki file, place `.dir-locals.el` file with the following content:
+In the root wiki directory place a `.dir-locals.el` file with the following content:
 
 ```elisp
 ((nil . ((eval . (progn
