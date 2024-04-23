@@ -27,8 +27,15 @@
 
 (defun bookstack-sync (&optional force)
   "Run bookstack-editor sync."
-  (interactive)
-  (compile (concat "bookstack-editor sync" (if force " --force" ""))))
+  (interactive "P")
+  (message "Syncing bookstack (force=%s)" force)
+  (save-window-excursion
+    (compile (concat "bookstack-editor sync" (if force " --force" "")))))
+
+(defun bookstack-after-save-hook ()
+  (when (and (eq major-mode 'markdown-mode)
+             (bound-and-true-p bookstack-mode))
+    (bookstack-sync)))
 
 (define-minor-mode bookstack-mode
   "Minor mode for bookstack-editor."
@@ -36,8 +43,6 @@
   :keymap (let ((map (make-sparse-keymap)))
             (define-key map (kbd "C-c C-s") 'bookstack-sync)
             map))
-
-;; (bookstack-mode -1)
 
 (provide 'bookstack-editor)
 
