@@ -13,6 +13,8 @@ import dotenv
 logger.remove()
 logger.add(sink=sys.stderr, level="INFO")
 
+BOOKSTACK_FILE_NAME = ".bookstack.json"
+
 DataT = TypeVar('DataT')
 
 
@@ -67,7 +69,6 @@ class PagesData(pydantic.BaseModel):
 
 class DownloadedPage(pydantic.BaseModel):
     path_markdown: Path
-    # path_html: Path
     data: PagesData
     last_modified: float = 0
 
@@ -144,8 +145,6 @@ class BookstackRoot(pydantic.BaseModel):
                 continue
             logger.info(f"[sync] removing {page.path_markdown}")
             page.path_markdown.unlink()
-            # if page.path_html.exists():
-            #     page.path_html.unlink()
             old_book_dirs.add(page.data.book_slug)
 
         for old_book_dir in old_book_dirs:
@@ -171,14 +170,11 @@ class BookstackRoot(pydantic.BaseModel):
             book_path = root_dir / page.book_slug
             book_path.mkdir(parents=True, exist_ok=True)
             path_markdown = root_dir / page.book_slug / (page.slug + ".md")
-            # path_html = root_dir / page.book_slug / (page.slug + ".html")
             source = api.get_pages_export_markdown(page.id).replace('\r\n', '\n').replace('\r', '\n')
             path_markdown.write_text(source)
-            # path_html.write_text(api.get_pages_export_html(page.id))
             last_modified = path_markdown.stat().st_mtime
             new_downloaded_pages.pages[key] = DownloadedPage(
                 path_markdown=path_markdown,
-                # path_html=path_html,
                 data=page,
                 last_modified=last_modified)
             tqdm.write(f"synced {page.book_slug}/{page.slug}")
@@ -186,17 +182,15 @@ class BookstackRoot(pydantic.BaseModel):
         for key in modified_pages:
             page = modified_pages[key]
             page.data.update(api, page.path_markdown.read_text())
-            # page.path_html.write_text(api.get_pages_export_html(page.data.id))
             page.last_modified = page.path_markdown.stat().st_mtime
             new_downloaded_pages.pages[key] = page
-            tqdm.write(f"updated {page.key()}")
+            tqdm.write(f"updated {page.path_markdown}")
 
         (root_dir / BOOKSTACK_FILE_NAME).write_text(new_downloaded_pages.model_dump_json(indent=2))
         print(f"synced {len(pages.data)} pages")
 
         self.pages = new_downloaded_pages.pages
 
-BOOKSTACK_FILE_NAME = ".bookstack.json"
 
 def main():
     parser = ArgumentParser()
