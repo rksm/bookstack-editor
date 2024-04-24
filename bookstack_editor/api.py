@@ -231,70 +231,71 @@ class BookstackRoot(pydantic.BaseModel):
 
         # step 1: remove pages that were removed upstream and have no local changes
         for key in pages_removed_remotely:
-            page = self.pages[key]
-            if page.is_modified():
+            page_data = self.pages[key]
+            if page_data.is_modified():
                 logger.warning(
-                    f"[sync] {page.path_markdown} was removed upstream but has local changes, skipping removal")
-                new_downloaded_pages.pages[key] = page
+                    f"[sync] {page_data.path_markdown} / {page_data.url(self.url)} was removed upstream but has local changes, skipping removal"
+                )
+                new_downloaded_pages.pages[key] = page_data
                 continue
-            if page.exists():
+            if page_data.exists():
                 if key in pages_removed_locally:
                     del pages_removed_locally[key]
-                logger.info(f"[sync] removing {page.path_markdown} (removed upstream)")
-                page.path_markdown.unlink()
-            old_book_dirs.add(page.data.book_slug)
+                print(f"[sync] removing {page_data.path_markdown} (removed upstream)")
+                page_data.path_markdown.unlink()
+            old_book_dirs.add(page_data.data.book_slug)
 
         # step 3: remove pages that were removed locally
         for key in pages_removed_locally:
-            page = self.pages[key]
+            page_data = self.pages[key]
             remote_page = new_pages.get(key)
-            if remote_page and remote_page.updated_at == page.data.updated_at:
-                logger.info(f"[sync] removing {page.path_markdown} (removed locally)")
+            if remote_page and remote_page.updated_at == page_data.data.updated_at:
+                print(f"[sync] removing {page_data.path_markdown} (removed locally)")
                 del new_pages[key]
-                page.data.delete(api)
-            old_book_dirs.add(page.data.book_slug)
+                page_data.data.delete(api)
+            old_book_dirs.add(page_data.data.book_slug)
 
         # step 4: remove empty directories
         for old_book_dir in old_book_dirs:
             book_path = root_dir / old_book_dir
             if not list(book_path.iterdir()):
-                logger.info(f"[sync] removing {book_path}")
+                print(f"[sync] removing {book_path}")
                 book_path.rmdir()
 
         # step 5: download new and updated pages
         # if a page is modified locally and remotely, skip it unless force is set
         for key in tqdm(new_pages.keys()):
             old_page = self.pages.get(key)
-            page = new_pages[key]
+            page_data = new_pages[key]
 
-            if old_page and old_page.data.updated_at == page.updated_at:
+            if old_page and old_page.data.updated_at == page_data.updated_at:
                 new_downloaded_pages.pages[key] = old_page
                 continue
 
             if old_page and key in modified_pages and not force:
                 del modified_pages[key]
-                tqdm.write(f"[sync] {old_page.key()} is modified locally and remotely, skipping")
+                tqdm.write(
+                    f"[sync] {old_page.key()} / {old_page.url(self.url)} is modified locally and remotely, skipping")
                 new_downloaded_pages.pages[key] = old_page
                 continue
 
-            book_path = root_dir / page.book_slug
+            book_path = root_dir / page_data.book_slug
             book_path.mkdir(parents=True, exist_ok=True)
-            path_markdown = root_dir / page.book_slug / (page.slug + ".md")
-            source = api.get_pages_export_markdown(page.id).replace('\r\n', '\n').replace('\r', '\n')
+            path_markdown = root_dir / page_data.book_slug / (page_data.slug + ".md")
+            source = api.get_pages_export_markdown(page_data.id).replace('\r\n', '\n').replace('\r', '\n')
             path_markdown.write_text(source)
             last_modified = path_markdown.stat().st_mtime
-            new_downloaded_pages.pages[key] = DownloadedPage(path_markdown=path_markdown,
-                                                             data=page,
-                                                             last_modified=last_modified)
-            tqdm.write(f"synced {page.book_slug}/{page.slug}")
+            page = DownloadedPage(path_markdown=path_markdown, data=page_data, last_modified=last_modified)
+            new_downloaded_pages.pages[key] = page
+            tqdm.write(f"synced {page.path_markdown} / {page.url(self.url)}")
 
         # step 6: update modified pages
         for key in modified_pages:
-            page = modified_pages[key]
-            page.data.update(api, page.path_markdown.read_text())
-            page.last_modified = page.path_markdown.stat().st_mtime
-            new_downloaded_pages.pages[key] = page
-            tqdm.write(f"updated {page.path_markdown}")
+            page_data = modified_pages[key]
+            page_data.data.update(api, page_data.path_markdown.read_text())
+            page_data.last_modified = page_data.path_markdown.stat().st_mtime
+            new_downloaded_pages.pages[key] = page_data
+            tqdm.write(f"updated {page_data.path_markdown} / {page_data.url(self.url)}")
 
         # step 7: Find new pages
         known_md_files = {page.path_markdown.resolve() for page in new_downloaded_pages.pages.values()}
@@ -304,7 +305,6 @@ class BookstackRoot(pydantic.BaseModel):
                 continue
             md_file = md_file.resolve()
             if md_file.is_file() and md_file not in known_md_files:
-                print(f"found new page {md_file}")
                 new_md_files.add(md_file)
         if new_md_files:
             books_data = {book.slug: book for book in api.get_books_list().data}
@@ -316,8 +316,10 @@ class BookstackRoot(pydantic.BaseModel):
                     continue
                 name = f.stem
                 markdown = f.read_text()
-                page = PagesData.create(api, book_id=book.id, book_slug=book_slug, name=name, markdown=markdown)
-                new_downloaded_pages.pages[page.key()] = DownloadedPage(path_markdown=f, data=page)
+                page_data = PagesData.create(api, book_id=book.id, book_slug=book_slug, name=name, markdown=markdown)
+                page = DownloadedPage(path_markdown=f, data=page_data)
+                new_downloaded_pages.pages[page_data.key()] = page
+                print(f"created new page {page.path_markdown} / {page.url(self.url)}")
 
         # step 8: save the "database"
         (root_dir / BOOKSTACK_FILE_NAME).write_text(new_downloaded_pages.model_dump_json(indent=2))
