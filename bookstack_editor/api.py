@@ -135,6 +135,11 @@ class PagesData(pydantic.BaseModel):
         except:
             pass
 
+    def delete(self, api: 'Api') -> None:
+        result: dict | None = api.delete_pages_delete(self.id)
+        if result and (err := result.get("error")):
+            logger.error(f"Error deleting {self.key()}: {err}")
+
 
 class DownloadedPage(pydantic.BaseModel):
     path_markdown: Path
@@ -147,8 +152,11 @@ class DownloadedPage(pydantic.BaseModel):
     def url(self, base_url: str) -> str:
         return self.data.url(base_url)
 
+    def exists(self) -> bool:
+        return self.path_markdown.exists()
+
     def is_modified(self) -> bool:
-        return self.path_markdown.stat().st_mtime != self.last_modified
+        return self.path_markdown.exists() and self.path_markdown.stat().st_mtime != self.last_modified
 
 
 class Api():
@@ -204,6 +212,9 @@ class Api():
             logger.error(f"Error updating {id}: {message} ({code})")
         return result
 
+    def delete_pages_delete(self, page_id: int):
+        self.api.delete_pages_delete({"id": page_id})  # type: ignore
+
 
 class BookstackRoot(pydantic.BaseModel):
     url: str
@@ -211,32 +222,46 @@ class BookstackRoot(pydantic.BaseModel):
 
     def sync(self, root_dir: Path, api: Api, force: bool) -> None:
         pages = api.get_pages_list()
-        new_downloaded_pages = BookstackRoot(url=self.url, pages={})
         new_pages = {page.key(): page for page in pages.data}
         modified_pages = {page.key(): page for page in self.pages.values() if page.is_modified()}
-        removed_pages = self.pages.keys() - new_pages.keys()
+        pages_removed_locally = {page.key(): page for page in self.pages.values() if not page.exists()}
+        pages_removed_remotely = self.pages.keys() - new_pages.keys()
         old_book_dirs: set[str] = set()
+        new_downloaded_pages = BookstackRoot(url=self.url, pages={})
 
         # step 1: remove pages that were removed upstream and have no local changes
-        for key in removed_pages:
+        for key in pages_removed_remotely:
             page = self.pages[key]
             if page.is_modified():
                 logger.warning(
                     f"[sync] {page.path_markdown} was removed upstream but has local changes, skipping removal")
                 new_downloaded_pages.pages[key] = page
                 continue
-            logger.info(f"[sync] removing {page.path_markdown}")
-            page.path_markdown.unlink()
+            if page.exists():
+                if key in pages_removed_locally:
+                    del pages_removed_locally[key]
+                logger.info(f"[sync] removing {page.path_markdown} (removed upstream)")
+                page.path_markdown.unlink()
             old_book_dirs.add(page.data.book_slug)
 
-        # step 2: remove empty directories
+        # step 3: remove pages that were removed locally
+        for key in pages_removed_locally:
+            page = self.pages[key]
+            remote_page = new_pages.get(key)
+            if remote_page and remote_page.updated_at == page.data.updated_at:
+                logger.info(f"[sync] removing {page.path_markdown} (removed locally)")
+                del new_pages[key]
+                page.data.delete(api)
+            old_book_dirs.add(page.data.book_slug)
+
+        # step 4: remove empty directories
         for old_book_dir in old_book_dirs:
             book_path = root_dir / old_book_dir
             if not list(book_path.iterdir()):
                 logger.info(f"[sync] removing {book_path}")
                 book_path.rmdir()
 
-        # step 3: download new and updated pages
+        # step 5: download new and updated pages
         # if a page is modified locally and remotely, skip it unless force is set
         for key in tqdm(new_pages.keys()):
             old_page = self.pages.get(key)
@@ -263,7 +288,7 @@ class BookstackRoot(pydantic.BaseModel):
                                                              last_modified=last_modified)
             tqdm.write(f"synced {page.book_slug}/{page.slug}")
 
-        # step 4: update modified pages
+        # step 6: update modified pages
         for key in modified_pages:
             page = modified_pages[key]
             page.data.update(api, page.path_markdown.read_text())
@@ -271,10 +296,12 @@ class BookstackRoot(pydantic.BaseModel):
             new_downloaded_pages.pages[key] = page
             tqdm.write(f"updated {page.path_markdown}")
 
-        # step 5: Find new pages
+        # step 7: Find new pages
         known_md_files = {page.path_markdown.resolve() for page in new_downloaded_pages.pages.values()}
         new_md_files = set()
-        for md_file in root_dir.rglob("*.md"):
+        for md_file in root_dir.rglob("*/*.md"):
+            if set(md_file.parts).intersection({".git", ".vscode", ".direnv"}):
+                continue
             md_file = md_file.resolve()
             if md_file.is_file() and md_file not in known_md_files:
                 print(f"found new page {md_file}")
@@ -292,7 +319,8 @@ class BookstackRoot(pydantic.BaseModel):
                 page = PagesData.create(api, book_id=book.id, book_slug=book_slug, name=name, markdown=markdown)
                 new_downloaded_pages.pages[page.key()] = DownloadedPage(path_markdown=f, data=page)
 
+        # step 8: save the "database"
         (root_dir / BOOKSTACK_FILE_NAME).write_text(new_downloaded_pages.model_dump_json(indent=2))
-        print(f"synced {len(pages.data)} pages")
-
         self.pages = new_downloaded_pages.pages
+
+        print(f"synced {len(pages.data)} pages")

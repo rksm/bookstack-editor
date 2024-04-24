@@ -78,6 +78,7 @@ bookstack-editor sync
 
 - Pages that exist remotely will be created in subfolders following a `book-slug/page-slug.md` naming scheme.
 - Pages that exist locally but not remotely will be created if they are placed in a subfolder that corresponds to a book.
+- Pages that exist remotely, have a local record but no longer exist as files are deleted remotely when the local record and the remote page have the same last_modified date.
 - Pages that are deleted remotely and have no local changes will be deleted locally. Otherwise they will be kept.
 - Pages that are changed both locally and remotely will be skipped. You can run `bookstack-editor sync --force` to overwrite local changes with remote changes.
 
