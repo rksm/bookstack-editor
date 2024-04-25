@@ -70,12 +70,11 @@ After running `direnv allow` this will ensure that the `bookstack-editor` CLI ut
 
 ### 4. Usage
 
-You can now sync the markdown pages of the wiki by running:
+Ensure that there is `.bookstack.json` file in the directory you are in (with your terminal or $EDITOR) or in a parent directory.
 
-```sh
-bookstack-editor sync
-```
+Run `bookstack-editor sync` to populate the content from the wiki. You can then modify, create (in existing book directories) or delete markdown files to edit, delete, or create pages. Creating new books/chapters is currently not supported.
 
+The sync command sync wiki pages as follows:
 - Pages that exist remotely will be created in subfolders following a `book-slug/page-slug.md` naming scheme.
 - Pages that exist locally but not remotely will be created if they are placed in a subfolder that corresponds to a book.
 - Pages that exist remotely, have a local record but no longer exist as files are deleted remotely when the local record and the remote page have the same last_modified date.
