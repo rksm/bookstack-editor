@@ -220,6 +220,15 @@ class BookstackRoot(pydantic.BaseModel):
     url: str
     pages: dict[str, DownloadedPage]
 
+    def get_link(self, file: Path) -> str:
+        if file.is_absolute():
+            file = file.relative_to(Path.cwd())
+        file = file.with_suffix("")
+        [book_slug, page_slug] = file.parts[-2:]
+        if f"{book_slug}/{page_slug}" not in self.pages:
+            raise ValueError(f"page {book_slug}/{page_slug} not found in the database")
+        return f"{self.url}/books/{book_slug}/page/{page_slug}"
+
     def sync(self, root_dir: Path, api: Api, force: bool) -> None:
         pages = api.get_pages_list()
         new_pages = {page.key(): page for page in pages.data}

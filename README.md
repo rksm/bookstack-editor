@@ -2,7 +2,24 @@
 
 Programatically sync & edit [BookStack pages](https://www.bookstackapp.com/). Useful for editor integrations.
 
-Setup:
+## Usage
+
+```
+$ bookstack-editor --help
+usage: bookstack-editor [-h] [--dir DIR] {sync,page-link} ...
+
+positional arguments:
+  {sync,page-link}
+    sync             sync wiki with online bookstack instance
+    page-link        get a link to a page / inside a page
+
+options:
+  -h, --help         show this help message and exit
+  --dir DIR, -d DIR  wiki directory
+```
+
+
+## Setup
 
 ### 1. Prepare a local wiki folder
 
@@ -91,7 +108,7 @@ In your `init.el` or wherever you configure your Emacs:
 ```elisp
 (use-package bookstack-editor
     :load-path (lambda () "path/to/bookstack-editor")
-    :commands (bookstack-mode bookstack-sync))
+    :commands (bookstack-mode bookstack-sync bookstack-open))
 ```
 
 In the root wiki directory place a `.dir-locals.el` file with the following content:

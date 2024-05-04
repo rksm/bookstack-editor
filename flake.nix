@@ -12,6 +12,15 @@
       pythonPackages = pkgs.python311Packages;
       python = pkgs.python311;
 
+      version-from-pyproject = file:
+        with builtins; with pkgs.lib;
+        let
+          content = readFile file;
+          line = findFirst (line: isString line && hasPrefix "version" line) "" (split "\n" content);
+          version = (elemAt (splitString "\"" line) 1);
+        in
+        version;
+
       bookstack = pythonPackages.buildPythonPackage {
         pname = "bookstack";
         version = "0.1.0";
@@ -38,7 +47,7 @@
 
       pkg = pythonPackages.buildPythonApplication {
         pname = "bookstack-editor";
-        version = "0.1.0";
+        version = version-from-pyproject "${self}/pyproject.toml";
         meta = with pkgs.lib; {
           description = "bookstack editor (client)";
           license = licenses.mit;

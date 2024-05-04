@@ -37,6 +37,21 @@
              (bound-and-true-p bookstack-mode))
     (bookstack-sync)))
 
+(defun bookstack--link-to-file ()
+  (when-let ((file (buffer-file-name)))
+    (string-trim (shell-command-to-string (format "bookstack-editor page-link %s" file)))))
+
+(defun bookstack-copy-link-to-file ()
+  (interactive)
+  (let ((link (bookstack--link-to-file)))
+    (kill-new link)
+    (message "Copied link to file: %s" link)))
+
+(defun bookstack-open ()
+  (interactive)
+  (let ((link (bookstack--link-to-file)))
+    (browse-url link)))
+
 (define-minor-mode bookstack-mode
   "Minor mode for bookstack-editor."
   :lighter " Bookstack"
